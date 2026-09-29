@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">NovaKey AI Keyboard</string>
+    <string name="ime_name">NovaKey</string>
+    <string name="subtype_en_us">English (US)</string>
+    <string name="subtype_bn_bd">Bangla (Phonetic / Banglish)</string>
+
+    <!-- Setup / Onboarding -->
+    <string name="setup_title">Set Up NovaKey</string>
+    <string name="setup_subtitle">Enable NovaKey to use intelligent AI typing across all your apps.</string>
+    <string name="step_1_title">Step 1: Enable Keyboard</string>
+    <string name="step_1_desc">Enable NovaKey in your Android system input settings.</string>
+    <string name="step_1_btn">Enable in Settings</string>
+    <string name="step_2_title">Step 2: Switch Keyboard</string>
+    <string name="step_2_desc">Select NovaKey as your active on-screen keyboard.</string>
+    <string name="step_2_btn">Select NovaKey</string>
+    <string name="status_enabled">✓ NovaKey is enabled</string>
+    <string name="status_selected">✓ NovaKey is active</string>
+    <string name="status_not_enabled">NovaKey is not enabled yet</string>
+
+    <!-- AI Toolbar Labels -->
+    <string name="action_grammar">Grammar</string>
+    <string name="action_tone">Tone</string>
+    <string name="action_rewrite">Rewrite</string>
+    <string name="action_banglish">Banglish</string>
+    <string name="action_explain">Explain</string>
+    <string name="action_settings">Settings</string>
+</resources>
