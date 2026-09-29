@@ -426,6 +426,10 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
                 candidateBarView?.setCandidates(listOf("⏳ Translating to $targetLang…"))
 
                 val (word, _) = inputConnectionManager.getCurrentActiveWord()
+                if (safeContext == null) {
+                    candidateBarView?.setCandidates(listOf("Select some text to translate."))
+                    return
+                }
                 val aiContext = EditorContextManager.toAiContext(safeContext, word)
 
                 activeAiJob?.cancel()
