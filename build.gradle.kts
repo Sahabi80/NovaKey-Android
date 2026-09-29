@@ -3,6 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.3.0" apply false
 }
 
-tasks.register("clean", Delete) {
+tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
