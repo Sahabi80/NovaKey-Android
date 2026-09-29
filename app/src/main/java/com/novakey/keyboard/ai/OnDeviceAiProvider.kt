@@ -1,4 +1,3 @@
-```
 package com.novakey.keyboard.ai
 
 import android.content.Context
@@ -266,4 +265,3 @@ class OnDeviceAiProvider(
         }
     }
 }
-```
