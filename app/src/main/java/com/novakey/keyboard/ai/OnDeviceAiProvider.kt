@@ -1,9 +1,10 @@
+```
 package com.novakey.keyboard.ai
 
 import android.content.Context
 import android.os.Build
-import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.genai.prompt.FeatureStatus
+import com.google.mlkit.genai.common.DownloadStatus
+import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerativeModel
 import com.novakey.keyboard.ai.model.AiContextResult
@@ -16,9 +17,7 @@ import com.novakey.keyboard.ai.model.ProviderSource
 import com.novakey.keyboard.ai.model.RewriteMode
 import com.novakey.keyboard.engine.tone.ToneCategory
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * On-Device GenAI Provider using the official Google ML Kit GenAI Prompt API.
@@ -60,8 +59,7 @@ class OnDeviceAiProvider(
         val client = getClient() ?: return@withContext OnDeviceStatus.UNAVAILABLE
 
         return@withContext try {
-            val statusTask = client.checkStatus()
-            val featureStatus = Tasks.await(statusTask, 2500, TimeUnit.MILLISECONDS)
+            val featureStatus = client.checkStatus()
 
             when (featureStatus) {
                 FeatureStatus.AVAILABLE -> OnDeviceStatus.AVAILABLE
@@ -77,9 +75,26 @@ class OnDeviceAiProvider(
     suspend fun requestModelDownload(): Boolean = withContext(Dispatchers.IO) {
         val client = getClient() ?: return@withContext false
         return@withContext try {
-            val downloadTask = client.download()
-            Tasks.await(downloadTask, 5000, TimeUnit.MILLISECONDS)
-            true
+            var completed = false
+
+            kotlinx.coroutines.withTimeout(120_000L) {
+                client.download().collect { status ->
+                    when (status) {
+                        DownloadStatus.DownloadCompleted -> {
+                            completed = true
+                        }
+                        is DownloadStatus.DownloadFailed -> {
+                            throw status.e
+                        }
+                        is DownloadStatus.DownloadStarted,
+                        is DownloadStatus.DownloadProgress -> {
+                            // Keep collecting until the model finishes downloading.
+                        }
+                    }
+                }
+            }
+
+            completed
         } catch (_: Throwable) {
             false
         }
@@ -94,7 +109,7 @@ class OnDeviceAiProvider(
         val prompt = "Proofread and correct grammar, spelling, and punctuation. Return only the corrected sentence:\n$text"
 
         return@withContext try {
-            val response = client.generateContent(prompt).await()
+            val response = client.generateContent(prompt)
             val raw = response.text?.trim() ?: text
             val cleaned = cleanKeyboardOutput(raw, 250)
             AiResult.Success(
@@ -126,7 +141,7 @@ class OnDeviceAiProvider(
         }
 
         return@withContext try {
-            val response = client.generateContent(prompt).await()
+            val response = client.generateContent(prompt)
             val raw = response.text?.trim() ?: text
             val cleaned = cleanKeyboardOutput(raw, 250)
             AiResult.Success(
@@ -151,7 +166,7 @@ class OnDeviceAiProvider(
         val prompt = "Rewrite this sentence with a ${tone.displayName} tone. Return only the revised sentence:\n$text"
 
         return@withContext try {
-            val response = client.generateContent(prompt).await()
+            val response = client.generateContent(prompt)
             val raw = response.text?.trim() ?: text
             val cleaned = cleanKeyboardOutput(raw, 250)
             AiResult.Success(
@@ -192,7 +207,7 @@ class OnDeviceAiProvider(
         }
 
         return@withContext try {
-            val response = client.generateContent(prompt).await()
+            val response = client.generateContent(prompt)
             val raw = response.text?.trim() ?: text
             val cleaned = cleanKeyboardOutput(raw, 300)
             AiResult.Success(
@@ -218,7 +233,7 @@ class OnDeviceAiProvider(
         val prompt = "Instruction: $userPrompt\nInput text:\n$text\nProvide only the result (concise):"
 
         return@withContext try {
-            val response = client.generateContent(prompt).await()
+            val response = client.generateContent(prompt)
             val raw = response.text?.trim() ?: text
             val cleaned = cleanKeyboardOutput(raw, 300)
             AiResult.Success(
@@ -251,3 +266,4 @@ class OnDeviceAiProvider(
         }
     }
 }
+```
