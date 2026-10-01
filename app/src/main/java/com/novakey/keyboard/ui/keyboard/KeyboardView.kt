@@ -70,8 +70,10 @@ class KeyboardView(
     }
 
     fun setLayer(layer: KeyboardLayer) {
-        currentLayer = layer
-        renderKeyboard()
+        if (currentLayer != layer) {
+            currentLayer = layer
+            renderKeyboard()
+        }
     }
 
     fun setLanguage(language: InputLanguage) {
@@ -97,11 +99,23 @@ class KeyboardView(
                 }
                 addRow(KeyboardLayouts.BOTTOM_ROW)
             }
-            KeyboardLayer.SYMBOLS, KeyboardLayer.NUMBERS -> {
+            KeyboardLayer.SYMBOLS -> {
                 addRow(KeyboardLayouts.SYMBOLS_ROW_1)
                 addRow(KeyboardLayouts.SYMBOLS_ROW_2)
                 addRow(KeyboardLayouts.SYMBOLS_ROW_3)
-                addRow(KeyboardLayouts.BOTTOM_ROW)
+                addRow(KeyboardLayouts.SYMBOLS_BOTTOM_ROW)
+            }
+            KeyboardLayer.MORE_SYMBOLS -> {
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_1)
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_2)
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_3)
+                addRow(KeyboardLayouts.SYMBOLS_BOTTOM_ROW)
+            }
+            KeyboardLayer.NUMBERS -> {
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_1)
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_2)
+                addRow(KeyboardLayouts.MORE_SYMBOLS_ROW_3)
+                addRow(KeyboardLayouts.SYMBOLS_BOTTOM_ROW)
             }
         }
     }
@@ -264,11 +278,20 @@ class KeyboardView(
                 actionHandler?.onSpace()
             }
             KeyType.SWITCH_LAYER -> {
-                if (currentLayer == KeyboardLayer.QWERTY) {
-                    setLayer(KeyboardLayer.SYMBOLS)
-                } else {
-                    setLayer(KeyboardLayer.QWERTY)
+                val target = when (key.targetLayer) {
+                    "QWERTY" -> KeyboardLayer.QWERTY
+                    "SYMBOLS" -> KeyboardLayer.SYMBOLS
+                    "MORE_SYMBOLS" -> KeyboardLayer.MORE_SYMBOLS
+                    else -> {
+                        if (currentLayer == KeyboardLayer.QWERTY) {
+                            KeyboardLayer.SYMBOLS
+                        } else {
+                            KeyboardLayer.QWERTY
+                        }
+                    }
                 }
+                setLayer(target)
+                actionHandler?.onLayerSwitch(target)
             }
             KeyType.SWITCH_LANGUAGE -> {
                 actionHandler?.onLanguageSwitch()
