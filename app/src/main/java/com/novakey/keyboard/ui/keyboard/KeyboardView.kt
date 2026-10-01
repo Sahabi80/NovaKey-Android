@@ -231,11 +231,17 @@ class KeyboardView(
             val primaryText = TextView(context).apply {
                 val displayLabel = when {
                     key.type == KeyType.CHARACTER && isShifted -> key.shiftLabel
+                    key.type == KeyType.SPACE -> when (currentLanguage) {
+                        InputLanguage.ENGLISH -> "EN"
+                        InputLanguage.BANGLISH -> "বং"
+                        InputLanguage.BANGLA -> "বাংলা"
+                    }
                     else -> key.primaryLabel
                 }
                 text = displayLabel
                 textSize = when (key.type) {
                     KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE -> 18f
+                    KeyType.SPACE -> 15f
                     KeyType.SWITCH_LAYER, KeyType.SWITCH_LANGUAGE -> 13f
                     KeyType.EMOJI -> 17f
                     else -> 19f
