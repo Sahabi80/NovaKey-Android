@@ -18,7 +18,6 @@ class AiToolbarView(
 ) : HorizontalScrollView(context) {
 
     private val container: LinearLayout
-    private var langChip: TextView? = null
     private var currentLanguage: InputLanguage = InputLanguage.ENGLISH
 
     init {
@@ -37,7 +36,6 @@ class AiToolbarView(
 
     fun setLanguage(language: InputLanguage) {
         currentLanguage = language
-        langChip?.text = "🌐 ${language.badge}"
     }
 
     private fun renderToolbar() {
@@ -62,17 +60,6 @@ class AiToolbarView(
         container.addView(createChip("Tone") {
             actionHandler?.onAiActionRequested(AiAction.TONE)
         })
-
-        // 5. Language Switcher (EN / বাং / বং-EN)
-        langChip = createChip("🌐 ${currentLanguage.badge}") {
-            val next = when (currentLanguage) {
-                InputLanguage.ENGLISH -> InputLanguage.BANGLISH
-                InputLanguage.BANGLISH -> InputLanguage.BANGLA
-                InputLanguage.BANGLA -> InputLanguage.ENGLISH
-            }
-            actionHandler?.onLanguageSelected(next)
-        }
-        container.addView(langChip)
     }
 
     private fun createChip(label: String, isAccent: Boolean = false, onClick: () -> Unit): TextView {
