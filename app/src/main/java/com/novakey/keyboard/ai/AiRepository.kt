@@ -131,26 +131,11 @@ class AiRepository(
 
         // 2. Try Cloud fallback via Server Proxy
         if (isCloudEnabled) {
-            val cloudRes = cloudProvider.processContextAction(text, actionKey, context)
+            val cloudRes = cloudProvider.processContextAction(text, actionType = actionKey, context = context)
             if (cloudRes is AiResult.Success) return cloudRes
         }
 
-        // 3. Fallback to Local basic/transliteration
-        if (targetLang.equals("bn", ignoreCase = true) || targetLang.contains("bangla", ignoreCase = true)) {
-            val converted = BanglishConverter.convert(text)
-            if (converted.isNotBlank() && converted != text) {
-                return AiResult.Success(
-                    AiContextResult(
-                        query = text,
-                        responseText = converted,
-                        actionType = "translate",
-                        explanation = "Local Banglish transliteration engine",
-                        providerSource = ProviderSource.LOCAL
-                    )
-                )
-            }
-        }
-
+        // 3. Fallback to Local semantic translator
         return localProvider.processContextAction(text, actionKey, context)
     }
 
