@@ -17,7 +17,8 @@ data class KeyModel(
     val shiftLabel: String = primaryLabel.uppercase(),
     val secondaryLabel: String? = null,
     val type: KeyType = KeyType.CHARACTER,
-    val weight: Float = 1.0f
+    val weight: Float = 1.0f,
+    val targetLayer: String? = null
 )
 
 object KeyboardLayouts {
@@ -73,28 +74,73 @@ object KeyboardLayouts {
         KeyModel("⌫", type = KeyType.BACKSPACE, weight = 1.3f)
     )
 
+    // Default bottom row for text layers (QWERTY / Bangla)
     val BOTTOM_ROW = listOf(
-        KeyModel("?123", type = KeyType.SWITCH_LAYER, weight = 1.2f),
+        KeyModel("?123", type = KeyType.SWITCH_LAYER, weight = 1.2f, targetLayer = "SYMBOLS"),
         KeyModel("😊", type = KeyType.EMOJI, weight = 1.0f),
         KeyModel("space", type = KeyType.SPACE, weight = 4.0f),
         KeyModel(".", weight = 0.9f),
         KeyModel("↵", type = KeyType.ENTER, weight = 1.5f)
     )
 
+    // ==========================================
+    // MAIN SYMBOLS PAGE
+    // ==========================================
+
+    // Row 1: 1 2 3 4 5 6 7 8 9 0
     val SYMBOLS_ROW_1 = listOf(
         KeyModel("1"), KeyModel("2"), KeyModel("3"), KeyModel("4"), KeyModel("5"),
         KeyModel("6"), KeyModel("7"), KeyModel("8"), KeyModel("9"), KeyModel("0")
     )
 
+    // Row 2: @ # $ % & - + ( ) /
     val SYMBOLS_ROW_2 = listOf(
         KeyModel("@"), KeyModel("#"), KeyModel("$"), KeyModel("%"), KeyModel("&"),
-        KeyModel("-"), KeyModel("+"), KeyModel("("), KeyModel(")")
+        KeyModel("-"), KeyModel("+"), KeyModel("("), KeyModel(")"), KeyModel("/")
     )
 
+    // Row 3: =< (Layer Switch to More Symbols) * " ' : ; ! ? = _ Backspace
     val SYMBOLS_ROW_3 = listOf(
-        KeyModel("=\\<", type = KeyType.SWITCH_LAYER, weight = 1.4f),
+        KeyModel("=\\<", type = KeyType.SWITCH_LAYER, weight = 1.3f, targetLayer = "MORE_SYMBOLS"),
         KeyModel("*"), KeyModel("\""), KeyModel("'"), KeyModel(":"),
-        KeyModel(";"), KeyModel("!"), KeyModel("?"),
-        KeyModel("⌫", type = KeyType.BACKSPACE, weight = 1.4f)
+        KeyModel(";"), KeyModel("!"), KeyModel("?"), KeyModel("="), KeyModel("_"),
+        KeyModel("⌫", type = KeyType.BACKSPACE, weight = 1.3f)
+    )
+
+    // Dedicated bottom row for symbols: ABC | , | 😊 | space | . | Enter
+    val SYMBOLS_BOTTOM_ROW = listOf(
+        KeyModel("ABC", type = KeyType.SWITCH_LAYER, weight = 1.2f, targetLayer = "QWERTY"),
+        KeyModel(",", weight = 0.9f),
+        KeyModel("😊", type = KeyType.EMOJI, weight = 1.0f),
+        KeyModel("space", type = KeyType.SPACE, weight = 3.5f),
+        KeyModel(".", weight = 0.9f),
+        KeyModel("↵", type = KeyType.ENTER, weight = 1.5f)
+    )
+
+    // ==========================================
+    // ADVANCED / MORE SYMBOLS PAGE
+    // ==========================================
+
+    // Row 1: Core brackets and programming symbols (~ \ | ^ < > [ ] { })
+    val MORE_SYMBOLS_ROW_1 = listOf(
+        KeyModel("~"), KeyModel("\\"), KeyModel("|"), KeyModel("^"),
+        KeyModel("<"), KeyModel(">"), KeyModel("["), KeyModel("]"),
+        KeyModel("{"), KeyModel("}")
+    )
+
+    // Row 2: Currency, math, and typography symbols (€ £ ¥ ` ° • × ÷ ± ≠)
+    val MORE_SYMBOLS_ROW_2 = listOf(
+        KeyModel("€"), KeyModel("£"), KeyModel("¥"), KeyModel("`"),
+        KeyModel("°"), KeyModel("•"), KeyModel("×"), KeyModel("÷"),
+        KeyModel("±"), KeyModel("≠")
+    )
+
+    // Row 3: ?123 (Layer Switch back to Main Symbols) © ® ™ ≤ ≥ « » → … Backspace
+    val MORE_SYMBOLS_ROW_3 = listOf(
+        KeyModel("?123", type = KeyType.SWITCH_LAYER, weight = 1.3f, targetLayer = "SYMBOLS"),
+        KeyModel("©"), KeyModel("®"), KeyModel("™"), KeyModel("≤"),
+        KeyModel("≥"), KeyModel("«"), KeyModel("»"), KeyModel("→"),
+        KeyModel("…"),
+        KeyModel("⌫", type = KeyType.BACKSPACE, weight = 1.3f)
     )
 }
