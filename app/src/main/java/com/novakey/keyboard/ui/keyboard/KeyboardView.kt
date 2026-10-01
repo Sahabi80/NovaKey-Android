@@ -18,6 +18,7 @@ import android.widget.TextView
 import com.novakey.keyboard.controller.InputLanguage
 import com.novakey.keyboard.controller.KeyboardActionHandler
 import com.novakey.keyboard.controller.KeyboardLayer
+import kotlin.math.abs
 
 class KeyboardView(
     context: Context,
@@ -314,6 +315,62 @@ class KeyboardView(
                         }
                         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                             view.isPressed = false
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } else if (key.type == KeyType.SPACE) {
+                var startX = 0f
+                var startY = 0f
+                var isSwipeHandled = false
+                val swipeThresholdPx = dpToPx(48)
+
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.isPressed = true
+                            startX = event.x
+                            startY = event.y
+                            isSwipeHandled = false
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val dx = event.x - startX
+                            val dy = event.y - startY
+                            if (!isSwipeHandled && abs(dx) > swipeThresholdPx && abs(dx) > abs(dy) * 1.5f) {
+                                isSwipeHandled = true
+                                view.isPressed = false
+                                if (dx > 0) {
+                                    // Swipe RIGHT -> Next language (ENGLISH -> BANGLISH -> BANGLA -> ENGLISH)
+                                    val next = when (currentLanguage) {
+                                        InputLanguage.ENGLISH -> InputLanguage.BANGLISH
+                                        InputLanguage.BANGLISH -> InputLanguage.BANGLA
+                                        InputLanguage.BANGLA -> InputLanguage.ENGLISH
+                                    }
+                                    actionHandler?.onLanguageSelected(next)
+                                } else {
+                                    // Swipe LEFT -> Previous language (ENGLISH -> BANGLA -> BANGLISH -> ENGLISH)
+                                    val prev = when (currentLanguage) {
+                                        InputLanguage.ENGLISH -> InputLanguage.BANGLA
+                                        InputLanguage.BANGLA -> InputLanguage.BANGLISH
+                                        InputLanguage.BANGLISH -> InputLanguage.ENGLISH
+                                    }
+                                    actionHandler?.onLanguageSelected(prev)
+                                }
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            view.isPressed = false
+                            if (!isSwipeHandled) {
+                                handleKeyClick(key)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            view.isPressed = false
+                            isSwipeHandled = false
                             true
                         }
                         else -> false
