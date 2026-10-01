@@ -171,7 +171,7 @@ class AiRepository(
 
         // 2. Try Cloud fallback via Server Proxy
         if (isCloudEnabled) {
-            val cloudRes = cloudProvider.processContextAction(text, actionKey = actionType, context = context)
+            val cloudRes = cloudProvider.processContextAction(text, actionType = actionType, context = context)
             if (cloudRes is AiResult.Success) return cloudRes
         }
 
