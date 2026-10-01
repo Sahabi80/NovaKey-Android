@@ -236,12 +236,36 @@ class KeyboardView(
                         else -> false
                     }
                 }
+            } else if (key.type == KeyType.CHARACTER) {
+                // Immediate low-latency touch dispatch for CHARACTER keys to prevent missed taps during fast typing
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.isPressed = true
+                            handleKeyClick(key)
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val x = event.x
+                            val y = event.y
+                            if (x < 0 || x > view.width || y < 0 || y > view.height) {
+                                view.isPressed = false
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.isPressed = false
+                            true
+                        }
+                        else -> false
+                    }
+                }
             } else {
                 setOnClickListener {
                     handleKeyClick(key)
                 }
 
-                // Long press for secondary character
+                // Long press for secondary character on special/action keys if configured
                 if (key.secondaryLabel != null) {
                     setOnLongClickListener {
                         actionHandler?.onTextKey(key.secondaryLabel)
