@@ -23,7 +23,7 @@ import java.net.URL
  * Falls back gracefully if network fails, timeout occurs, or quota is exhausted.
  */
 class CloudAiProvider(
-    private val baseEndpointUrl: String = "https://ais-dev-sv4cpezqtitx4em75gloat-744117460115.asia-southeast1.run.app/api/ai"
+    private val baseEndpointUrl: String = "https://novakey-android.onrender.com/api/ai"
 ) : AiEngineProvider {
 
     override val providerName: String = "NovaKey Cloud Assistant"
