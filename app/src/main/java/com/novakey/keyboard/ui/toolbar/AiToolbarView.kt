@@ -73,11 +73,6 @@ class AiToolbarView(
             actionHandler?.onLanguageSelected(next)
         }
         container.addView(langChip)
-
-        // 6. Direct Banglish to Bangla transliteration toggle
-        container.addView(createChip("বং ⇄ বাংলা") {
-            actionHandler?.onAiActionRequested(AiAction.BANGLISH)
-        })
     }
 
     private fun createChip(label: String, isAccent: Boolean = false, onClick: () -> Unit): TextView {
