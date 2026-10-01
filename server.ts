@@ -754,9 +754,25 @@ if (process.env.NODE_ENV !== 'production') {
   });
   app.use(vite.middlewares as any);
 } else {
-  app.use(express.static(path.resolve(__dirname, 'dist')));
-  app.get('*', (_req: Request, res: Response) => {
-    res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+  // Backend-only production mode for Render / public cloud deployments
+  app.get('/', (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'ok',
+      service: 'NovaKey AI Backend',
+      version: '1.0.0',
+      message: 'NovaKey AI Backend is running.',
+    });
+  });
+
+  app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'healthy',
+      uptime: process.uptime(),
+    });
+  });
+
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: 'Endpoint not found. NovaKey AI backend provides /api/ai/* endpoints.' });
   });
 }
 
