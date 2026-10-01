@@ -414,11 +414,11 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
             "translate" -> {
                 // Determine direction: English -> Bangla or Bangla -> English
                 val safeContext = captureEditorContext()
-                val targetText = safeContext?.targetText ?: ""
-                if (targetText.isBlank()) {
+                if (safeContext == null || safeContext.targetText.isBlank()) {
                     candidateBarView?.setCandidates(listOf("Select some text to translate."))
                     return
                 }
+                val targetText = safeContext.targetText
 
                 val hasBengaliChar = targetText.any { it in '\u0980'..'\u09FF' }
                 val targetLang = if (hasBengaliChar) "English" else "Bangla"
