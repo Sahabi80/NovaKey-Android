@@ -1,12 +1,15 @@
 package com.novakey.keyboard.ui.keyboard
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -24,11 +27,34 @@ class KeyboardView(
     private var currentLayer: KeyboardLayer = KeyboardLayer.QWERTY
     private var currentLanguage: InputLanguage = InputLanguage.ENGLISH
 
+    // Backspace continuous repeat mechanism (Handler-based, lifecycle safe)
+    private val repeatHandler = Handler(Looper.getMainLooper())
+    private val backspaceRunnable = object : Runnable {
+        override fun run() {
+            actionHandler?.onBackspace()
+            repeatHandler.postDelayed(this, REPEAT_INTERVAL_MS)
+        }
+    }
+
+    companion object {
+        private const val INITIAL_REPEAT_DELAY_MS = 300L
+        private const val REPEAT_INTERVAL_MS = 60L
+    }
+
     init {
         orientation = VERTICAL
         setBackgroundColor(Color.parseColor("#0F172A")) // Dark slate background
         setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(8))
         renderKeyboard()
+    }
+
+    private fun stopBackspaceRepeat() {
+        repeatHandler.removeCallbacks(backspaceRunnable)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stopBackspaceRepeat()
     }
 
     fun toggleShift() {
@@ -54,6 +80,8 @@ class KeyboardView(
     }
 
     private fun renderKeyboard() {
+        // Stop any running repeat before rebuilding layout
+        stopBackspaceRepeat()
         removeAllViews()
 
         when (currentLayer) {
@@ -96,6 +124,7 @@ class KeyboardView(
         addView(rowLayout)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun createKeyContainer(key: KeyModel): View {
         val frame = FrameLayout(context).apply {
             val params = LayoutParams(0, LayoutParams.MATCH_PARENT, key.weight).apply {
@@ -165,15 +194,45 @@ class KeyboardView(
                 addView(secText)
             }
 
-            setOnClickListener {
-                handleKeyClick(key)
-            }
+            // Dedicated Touch Handling for Backspace (single authoritative input path with repeat)
+            if (key.type == KeyType.BACKSPACE) {
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            view.isPressed = true
+                            actionHandler?.onBackspace()
+                            repeatHandler.removeCallbacks(backspaceRunnable)
+                            repeatHandler.postDelayed(backspaceRunnable, INITIAL_REPEAT_DELAY_MS)
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val x = event.x
+                            val y = event.y
+                            if (x < 0 || x > view.width || y < 0 || y > view.height) {
+                                view.isPressed = false
+                                stopBackspaceRepeat()
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            view.isPressed = false
+                            stopBackspaceRepeat()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } else {
+                setOnClickListener {
+                    handleKeyClick(key)
+                }
 
-            // Long press for secondary character
-            if (key.secondaryLabel != null) {
-                setOnLongClickListener {
-                    actionHandler?.onTextKey(key.secondaryLabel)
-                    true
+                // Long press for secondary character
+                if (key.secondaryLabel != null) {
+                    setOnLongClickListener {
+                        actionHandler?.onTextKey(key.secondaryLabel)
+                        true
+                    }
                 }
             }
         }
@@ -195,6 +254,7 @@ class KeyboardView(
                 toggleShift()
             }
             KeyType.BACKSPACE -> {
+                // Fallback only; primary path is via OnTouchListener
                 actionHandler?.onBackspace()
             }
             KeyType.ENTER -> {
