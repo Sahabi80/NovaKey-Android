@@ -110,16 +110,82 @@ class LocalAiProvider : AiEngineProvider {
             return AiResult.Error("No text provided for tone change.")
         }
 
-        val result = LocalToneEngine.transform(trimmed, tone)
+        val hasBengaliChar = trimmed.any { it in '\u0980'..'\u09FF' }
+        val isBanglish = !hasBengaliChar && isLikelyBanglish(trimmed)
+
+        val transformed = when {
+            hasBengaliChar -> {
+                // Preserve Bangla script
+                when (tone) {
+                    ToneCategory.FRIENDLY -> {
+                        if (trimmed.contains("রিপ্লাই দাওনি কেন") || trimmed.contains("উত্তর দাওনি কেন")) {
+                            "Hey, আমার মেসেজটা দেখেছিস? 😄 সময় পেলে একটা reply দিস।"
+                        } else {
+                            "Hey! $trimmed 😊"
+                        }
+                    }
+                    ToneCategory.RESPECTFUL -> {
+                        "অনুগ্রহপূর্বক বিষয়টি বিবেচনা করবেন: $trimmed। আপনার সহযোগিতার জন্য ধন্যবাদ।"
+                    }
+                    ToneCategory.PROFESSIONAL -> {
+                        "বিনীত নিবেদন এই যে, $trimmed। আপনার মতামত প্রত্যাশা করছি।"
+                    }
+                    ToneCategory.POLITE -> {
+                        "দয়া করে $trimmed"
+                    }
+                    else -> trimmed
+                }
+            }
+            isBanglish -> {
+                // Strictly preserve Banglish (never convert to Bangla script or English)
+                when (tone) {
+                    ToneCategory.FRIENDLY -> {
+                        if (trimmed.lowercase().contains("reply dao nai") || trimmed.lowercase().contains("reply daw nai")) {
+                            "Hey, amar message ta dekhechis? 😄 Shomoy pele ekta reply dis."
+                        } else {
+                            "Hey, $trimmed! 😄"
+                        }
+                    }
+                    ToneCategory.RESPECTFUL -> {
+                        "Apnar subidhamoto shomoy ektu janaben: $trimmed. Dhonnobad."
+                    }
+                    ToneCategory.PROFESSIONAL -> {
+                        "Kindly janaben regarding: $trimmed. Thank you."
+                    }
+                    ToneCategory.POLITE -> {
+                        "Please $trimmed"
+                    }
+                    else -> "$trimmed 👍"
+                }
+            }
+            else -> {
+                // English input
+                LocalToneEngine.transform(trimmed, tone).transformedText
+            }
+        }
+
         return AiResult.Success(
             AiToneResult(
                 originalText = trimmed,
-                transformedText = result.transformedText,
+                transformedText = transformed,
                 tone = tone,
-                explanation = result.explanation,
+                explanation = "Tone adapted to ${tone.displayName} (Language preserved)",
                 providerSource = ProviderSource.LOCAL
             )
         )
+    }
+
+    private fun isLikelyBanglish(text: String): Boolean {
+        val banglishTokens = setOf(
+            "ami", "tumi", "tui", "apni", "amar", "tomar", "apnar", "amra", "tomra",
+            "apnara", "she", "tini", "ajke", "kalke", "ekhon", "kokhon", "kemon", "acho",
+            "achi", "achen", "chilo", "hobe", "hocche", "korchi", "korbo", "koro", "koren",
+            "jabo", "ashbo", "ashbe", "bhalo", "valo", "kharap", "keno", "ki", "kintu",
+            "onek", "shob", "kothay", "kivabe", "dorkar", "lagbe", "dekhecho", "dekhechis",
+            "reply", "dis", "dao", "nai", "gechi", "jani", "shomoy"
+        )
+        val words = text.lowercase().split(Regex("[^a-zA-Z]+")).filter { it.isNotBlank() }
+        return words.any { it in banglishTokens }
     }
 
     override suspend fun processContextAction(text: String, actionType: String, context: AiContext): AiResult<AiContextResult> {
@@ -157,27 +223,50 @@ class LocalAiProvider : AiEngineProvider {
                 }
             }
 
-            // 3. Translation Action (English <-> Bangla)
+            // 3. Translation Action (English <-> Bangla / Banglish)
             actionType.equals("translate_bn", ignoreCase = true) || actionType.equals("translate", ignoreCase = true) -> {
                 when {
-                    lower.contains("learning computer science") -> "আমি কম্পিউটার সায়েন্স শিখছি।"
-                    lower.contains("go to university today") || lower.contains("go to university tomorrow") -> "আমি আজ বিশ্ববিদ্যালয়ে যাব।"
-                    lower.contains("how are you") -> "আপনি কেমন আছেন?"
-                    lower.contains("thank you") -> "আপনাকে অনেক ধন্যবাদ।"
-                    else -> {
-                        // Use BanglishConverter for transliteration fallback
-                        val translit = BanglishConverter.convert(trimmed)
-                        if (translit.isNotBlank() && translit != trimmed) translit else "আমি এটি ভালো বুঝতে পারছি।"
-                    }
+                    lower.contains("are you coming tomorrow") || lower.contains("coming tomorrow") ->
+                        "তুমি কি কাল আসবে?"
+                    lower.contains("why didn't you reply to my message") || lower.contains("why didn't you reply") ->
+                        "তুমি আমার মেসেজের উত্তর দাওনি কেন?"
+                    lower.contains("how are you") ->
+                        "আপনি কেমন আছেন?"
+                    lower.contains("thank you") ->
+                        "আপনাকে অনেক ধন্যবাদ।"
+                    lower.contains("learning computer science") ->
+                        "আমি কম্পিউটার সায়েন্স শিখছি।"
+                    lower.contains("go to university today") || lower.contains("go to university tomorrow") ->
+                        "আমি আজ বিশ্ববিদ্যালয়ে যাব।"
+                    lower.contains("good morning") ->
+                        "শুভ সকাল।"
+                    lower.contains("good night") ->
+                        "শুভ রাত্রি।"
+                    else ->
+                        "অফলাইন অনুবাদক সাধারণ বাক্যাংশে সীমিত। সম্পূর্ণ এআই অনুবাদের জন্য ইন্টারনেটে সংযুক্ত হোন।"
                 }
             }
 
             actionType.equals("translate_en", ignoreCase = true) -> {
                 when {
-                    trimmed.contains("কেমন আছেন") -> "How are you?"
-                    trimmed.contains("ধন্যবাদ") -> "Thank you very much."
-                    trimmed.contains("বিশ্ববিদ্যালয়") -> "I am going to university today."
-                    else -> "I am doing well, thank you."
+                    trimmed.contains("কেমন আছেন") || trimmed.contains("কেমন আছো") || lower.contains("kemon acho") || lower.contains("kemon achen") ->
+                        "How are you?"
+                    trimmed.contains("ধন্যবাদ") || lower.contains("dhonnobad") ->
+                        "Thank you very much."
+                    lower.contains("office e jabo") || lower.contains("office jabo") || trimmed.contains("অফিসে যাব") ->
+                        "I will go to the office today."
+                    lower.contains("reply dao nai keno") || lower.contains("reply daw nai keno") || trimmed.contains("মেসেজের রিপ্লাই দাওনি কেন") ->
+                        "Why didn't you reply to my message?"
+                    lower.contains("kal ashbe") || lower.contains("kalke ashba") || trimmed.contains("কাল আসবে") ->
+                        "Are you coming tomorrow?"
+                    trimmed.contains("বিশ্ববিদ্যালয়") || lower.contains("university") ->
+                        "I am going to university today."
+                    trimmed.contains("শুভ সকাল") || lower.contains("shuvo shokal") ->
+                        "Good morning."
+                    trimmed.contains("শুভ রাত্রি") || lower.contains("shuvo ratri") ->
+                        "Good night."
+                    else ->
+                        "Offline translator has limited phrase coverage. Connect to network for full AI translation."
                 }
             }
 
