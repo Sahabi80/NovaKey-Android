@@ -28,6 +28,7 @@ interface KeyboardActionHandler {
 enum class KeyboardLayer {
     QWERTY,
     SYMBOLS,
+    MORE_SYMBOLS,
     NUMBERS
 }
 
