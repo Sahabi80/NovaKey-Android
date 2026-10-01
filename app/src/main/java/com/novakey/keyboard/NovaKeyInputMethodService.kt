@@ -235,9 +235,9 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
         triggerHaptic()
         if (currentLanguage == InputLanguage.BANGLISH) {
             val (currentWord, length) = inputConnectionManager.getCurrentActiveWord()
-            if (currentWord.isNotEmpty()) {
+            if (currentWord.isNotBlank() && length > 0) {
                 val converted = BanglishConverter.convert(currentWord)
-                if (converted.isNotEmpty() && converted != currentWord) {
+                if (converted.isNotBlank() && converted != currentWord) {
                     inputConnectionManager.replaceCurrentOrSelected(converted, length)
                 }
             }
@@ -257,7 +257,6 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
     }
 
     override fun onLanguageSwitch() {
-        triggerHaptic()
         val next = when (currentLanguage) {
             InputLanguage.ENGLISH -> InputLanguage.BANGLISH
             InputLanguage.BANGLISH -> InputLanguage.BANGLA
@@ -412,7 +411,7 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
                 showCustomPromptInput()
             }
             "translate" -> {
-                // Determine direction: English -> Bangla or Bangla -> English
+                // Determine direction: Bangla/Banglish -> English, or English -> Bangla
                 val safeContext = captureEditorContext()
                 if (safeContext == null || safeContext.targetText.isBlank()) {
                     candidateBarView?.setCandidates(listOf("Select some text to translate."))
@@ -421,7 +420,8 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
                 val targetText = safeContext.targetText
 
                 val hasBengaliChar = targetText.any { it in '\u0980'..'\u09FF' }
-                val targetLang = if (hasBengaliChar) "English" else "Bangla"
+                val isBanglish = !hasBengaliChar && (currentLanguage == InputLanguage.BANGLISH || isLikelyBanglishText(targetText))
+                val targetLang = if (hasBengaliChar || isBanglish) "English" else "Bangla"
 
                 candidateBarView?.setCandidates(listOf("⏳ Translating to $targetLang…"))
 
@@ -430,7 +430,7 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
 
                 activeAiJob?.cancel()
                 activeAiJob = serviceScope.launch {
-                    val langCode = if (hasBengaliChar) "en" else "bn"
+                    val langCode = if (hasBengaliChar || isBanglish) "en" else "bn"
                     when (val res = aiRepository.translate(targetText, langCode, aiContext)) {
                         is AiResult.Success -> {
                             showAiPreview(
@@ -730,6 +730,19 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
         isShowingEmoji = false
         emojiKeyboardView?.visibility = View.GONE
         keyboardView?.visibility = View.VISIBLE
+    }
+
+    private fun isLikelyBanglishText(text: String): Boolean {
+        val banglishTokens = setOf(
+            "ami", "tumi", "tui", "apni", "amar", "tomar", "apnar", "amra", "tomra",
+            "apnara", "she", "tini", "ajke", "kalke", "ekhon", "kokhon", "kemon", "acho",
+            "achi", "achen", "chilo", "hobe", "hocche", "korchi", "korbo", "koro", "koren",
+            "jabo", "ashbo", "ashbe", "bhalo", "valo", "kharap", "keno", "ki", "kintu",
+            "onek", "shob", "kothay", "kivabe", "dorkar", "lagbe", "dekhecho", "dekhechis",
+            "reply", "dis", "dao", "nai", "gechi", "jani", "shomoy"
+        )
+        val words = text.lowercase().split(Regex("[^a-zA-Z]+")).filter { it.isNotBlank() }
+        return words.any { it in banglishTokens }
     }
 
     private fun triggerHaptic() {
