@@ -73,6 +73,7 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
 
     private var isShowingEmoji = false
     private var isSensitiveField = false
+    private var isBackspacing = false
     private var vibrator: Vibrator? = null
 
     // Active AI operation context snapshot for input safety verification
@@ -91,6 +92,7 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
 
     override fun onDestroy() {
         super.onDestroy()
+        keyboardView?.stopBackspaceRepeat()
         serviceScope.cancel()
     }
 
@@ -164,6 +166,8 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        keyboardView?.stopBackspaceRepeat()
+        isBackspacing = false
         activeAiJob?.cancel()
         inputConnectionManager.updateInputConnection(null, null)
         dismissAllOverlays()
@@ -219,10 +223,31 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
         refreshCandidates()
     }
 
-    override fun onBackspace() {
-        triggerHaptic()
-        inputConnectionManager.deleteBackward()
-        refreshCandidates()
+    override fun onBackspace(isRepeat: Boolean) {
+        if (isSensitiveField) {
+            inputConnectionManager.deleteBackward(isRepeat)
+            return
+        }
+
+        triggerHaptic(isRepeat)
+        inputConnectionManager.deleteBackward(isRepeat)
+
+        if (isRepeat) {
+            isBackspacing = true
+            // Suppress candidate refresh during rapid backspace repeat to avoid blocking UI thread
+        } else {
+            isBackspacing = false
+            // Single tap: perform immediate candidate refresh
+            refreshCandidates()
+        }
+    }
+
+    override fun onBackspaceUp() {
+        if (isBackspacing) {
+            isBackspacing = false
+            // Perform one final candidate refresh after backspace repeat finishes
+            refreshCandidates()
+        }
     }
 
     override fun onEnter() {
@@ -426,10 +451,6 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
                 candidateBarView?.setCandidates(listOf("⏳ Translating to $targetLang…"))
 
                 val (word, _) = inputConnectionManager.getCurrentActiveWord()
-                if (safeContext == null) {
-                    candidateBarView?.setCandidates(listOf("Select some text to translate."))
-                    return
-                }
                 val aiContext = EditorContextManager.toAiContext(safeContext, word)
 
                 activeAiJob?.cancel()
@@ -736,13 +757,16 @@ class NovaKeyInputMethodService : InputMethodService(), KeyboardActionHandler {
         keyboardView?.visibility = View.VISIBLE
     }
 
-    private fun triggerHaptic() {
+    private fun triggerHaptic(isRepeat: Boolean = false) {
+        if (isRepeat) return // Do not saturate vibrator queue during rapid backspace repeat
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
                 @Suppress("DEPRECATION")
-                vibrator?.vibrate(15)
+                vibrator?.vibrate(10)
             }
         } catch (_: Exception) {
             // Ignore haptic failure fallback
