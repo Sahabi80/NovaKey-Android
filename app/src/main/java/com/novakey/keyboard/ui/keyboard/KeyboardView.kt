@@ -2,12 +2,12 @@ package com.novakey.keyboard.ui.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.RippleDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
+import android.util.StateSet
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -43,7 +43,7 @@ class KeyboardView(
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(Color.parseColor("#0F172A")) // Dark slate background
+        setBackgroundColor(Color.parseColor("#080D1A")) // Deep dark navy obsidian
         setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(8))
         renderKeyboard()
     }
@@ -147,25 +147,73 @@ class KeyboardView(
             }
             layoutParams = params
 
+            val cornerRadiusPx = dpToPx(8).toFloat()
+
+            // 1. Normal Key Background (Deep Navy with subtle Neon Blue/Cyan accent border)
             val normalBg = GradientDrawable().apply {
-                cornerRadius = dpToPx(8).toFloat()
+                cornerRadius = cornerRadiusPx
                 when (key.type) {
-                    KeyType.ENTER -> setColor(Color.parseColor("#3B82F6")) // Blue 500
-                    KeyType.SHIFT, KeyType.BACKSPACE, KeyType.SWITCH_LAYER, KeyType.SWITCH_LANGUAGE -> {
-                        if (key.type == KeyType.SHIFT && isShifted) {
-                            setColor(Color.parseColor("#6366F1")) // Active Indigo
+                    KeyType.ENTER -> {
+                        setColor(Color.parseColor("#0284C7")) // Electric Sky Blue
+                        setStroke(dpToPx(1), Color.parseColor("#38BDF8"))
+                    }
+                    KeyType.SHIFT -> {
+                        if (isShifted) {
+                            setColor(Color.parseColor("#00B4D8")) // Active Luminescent Cyan
+                            setStroke(dpToPx(1), Color.parseColor("#00F0FF"))
                         } else {
-                            setColor(Color.parseColor("#334155")) // Slate 700
+                            setColor(Color.parseColor("#152238")) // Function Slate Navy
+                            setStroke(dpToPx(1), Color.parseColor("#1E3A5F"))
                         }
                     }
-                    KeyType.SPACE -> setColor(Color.parseColor("#1E293B"))
-                    KeyType.EMOJI -> setColor(Color.parseColor("#1E293B"))
-                    else -> setColor(Color.parseColor("#1E293B")) // Slate 800
+                    KeyType.BACKSPACE, KeyType.SWITCH_LAYER, KeyType.SWITCH_LANGUAGE -> {
+                        setColor(Color.parseColor("#152238")) // Function Slate Navy
+                        setStroke(dpToPx(1), Color.parseColor("#1E3A5F"))
+                    }
+                    KeyType.SPACE, KeyType.EMOJI -> {
+                        setColor(Color.parseColor("#0F1A2E")) // Dark Navy
+                        setStroke(dpToPx(1), Color.parseColor("#1E3250"))
+                    }
+                    else -> {
+                        setColor(Color.parseColor("#0F1A2E")) // Normal Character Key Dark Navy
+                        setStroke(dpToPx(1), Color.parseColor("#1E3250"))
+                    }
                 }
             }
 
-            val rippleColor = ColorStateList.valueOf(Color.parseColor("#475569"))
-            background = RippleDrawable(rippleColor, normalBg, null)
+            // 2. Pressed Key Glow (Noticeably brighter Neon Blue/Cyan wash + Glowing border)
+            val pressedBg = GradientDrawable().apply {
+                cornerRadius = cornerRadiusPx
+                when (key.type) {
+                    KeyType.ENTER -> {
+                        setColor(Color.parseColor("#00F0FF")) // High-voltage Cyan Glow
+                        setStroke(dpToPx(2), Color.parseColor("#E0F2FE"))
+                    }
+                    KeyType.SHIFT -> {
+                        if (isShifted) {
+                            setColor(Color.parseColor("#38BDF8"))
+                            setStroke(dpToPx(2), Color.parseColor("#FFFFFF"))
+                        } else {
+                            setColor(Color.parseColor("#0284C7"))
+                            setStroke(dpToPx(2), Color.parseColor("#00F0FF"))
+                        }
+                    }
+                    else -> {
+                        setColor(Color.parseColor("#0369A1")) // Neon Blue / Cyan Wash
+                        setStroke(dpToPx(2), Color.parseColor("#00F0FF")) // Brilliant Neon Cyan Glowing Border
+                    }
+                }
+            }
+
+            // 3. Hardware-accelerated StateListDrawable with 120ms exit fade
+            val keyBackground = StateListDrawable().apply {
+                setEnterFadeDuration(0)
+                setExitFadeDuration(120)
+                addState(intArrayOf(android.R.attr.state_pressed), pressedBg)
+                addState(StateSet.WILD_CARD, normalBg)
+            }
+
+            background = keyBackground
 
             // Primary Label
             val primaryText = TextView(context).apply {
@@ -181,7 +229,7 @@ class KeyboardView(
                     else -> 19f
                 }
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#F8FAFC"))
+                setTextColor(Color.parseColor("#F0F9FF"))
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
@@ -194,7 +242,7 @@ class KeyboardView(
                 val secText = TextView(context).apply {
                     text = key.secondaryLabel
                     textSize = 10f
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(Color.parseColor("#38BDF8"))
                     val secParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.WRAP_CONTENT,
                         FrameLayout.LayoutParams.WRAP_CONTENT
