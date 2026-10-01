@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
@@ -43,8 +44,13 @@ class KeyboardView(
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(Color.parseColor("#080D1A")) // Deep dark navy obsidian
-        setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(8))
+        // Futuristic near-black keyboard background with subtle electric cyan boundary
+        val rootBg = GradientDrawable().apply {
+            setColor(Color.parseColor("#030712")) // Ultra-dark / near-black obsidian
+            setStroke(dpToPx(1), Color.parseColor("#155E75")) // Subtle electric cyan outer boundary outline
+        }
+        background = rootBg
+        setPadding(dpToPx(4), dpToPx(5), dpToPx(4), dpToPx(8))
         renderKeyboard()
     }
 
@@ -149,60 +155,65 @@ class KeyboardView(
 
             val cornerRadiusPx = dpToPx(8).toFloat()
 
-            // 1. Normal Key Background (Deep Navy with subtle Neon Blue/Cyan accent border)
-            val normalBg = GradientDrawable().apply {
+            // 1. Normal Key Background (Nearly black interior + Thin Electric Cyan outline + Soft outer glow)
+            val normalOuterHalo = GradientDrawable().apply {
+                cornerRadius = cornerRadiusPx + dpToPx(1)
+                setColor(Color.TRANSPARENT)
+                when (key.type) {
+                    KeyType.ENTER -> setStroke(dpToPx(2), Color.parseColor("#4D00F0FF"))
+                    KeyType.SHIFT -> if (isShifted) setStroke(dpToPx(2), Color.parseColor("#6600F0FF")) else setStroke(dpToPx(2), Color.parseColor("#2600F0FF"))
+                    else -> setStroke(dpToPx(2), Color.parseColor("#2600F0FF")) // Soft cyan outer glow halo
+                }
+            }
+
+            val normalInnerCore = GradientDrawable().apply {
                 cornerRadius = cornerRadiusPx
+                // Nearly black transparent-looking interior across all keys (NEVER solid blue)
                 when (key.type) {
                     KeyType.ENTER -> {
-                        setColor(Color.parseColor("#0284C7")) // Electric Sky Blue
-                        setStroke(dpToPx(1), Color.parseColor("#38BDF8"))
+                        setColor(Color.parseColor("#041624"))
+                        setStroke(dpToPx(1), Color.parseColor("#00F0FF")) // Electric cyan outline
                     }
                     KeyType.SHIFT -> {
                         if (isShifted) {
-                            setColor(Color.parseColor("#00B4D8")) // Active Luminescent Cyan
+                            setColor(Color.parseColor("#041624"))
                             setStroke(dpToPx(1), Color.parseColor("#00F0FF"))
                         } else {
-                            setColor(Color.parseColor("#152238")) // Function Slate Navy
-                            setStroke(dpToPx(1), Color.parseColor("#1E3A5F"))
+                            setColor(Color.parseColor("#050A14"))
+                            setStroke(dpToPx(1), Color.parseColor("#0891B2"))
                         }
                     }
                     KeyType.BACKSPACE, KeyType.SWITCH_LAYER, KeyType.SWITCH_LANGUAGE -> {
-                        setColor(Color.parseColor("#152238")) // Function Slate Navy
-                        setStroke(dpToPx(1), Color.parseColor("#1E3A5F"))
-                    }
-                    KeyType.SPACE, KeyType.EMOJI -> {
-                        setColor(Color.parseColor("#0F1A2E")) // Dark Navy
-                        setStroke(dpToPx(1), Color.parseColor("#1E3250"))
+                        setColor(Color.parseColor("#050A14"))
+                        setStroke(dpToPx(1), Color.parseColor("#0891B2"))
                     }
                     else -> {
-                        setColor(Color.parseColor("#0F1A2E")) // Normal Character Key Dark Navy
-                        setStroke(dpToPx(1), Color.parseColor("#1E3250"))
+                        setColor(Color.parseColor("#050A14")) // Almost black interior
+                        setStroke(dpToPx(1), Color.parseColor("#06B6D4")) // Thin electric cyan outline
                     }
                 }
             }
 
-            // 2. Pressed Key Glow (Noticeably brighter Neon Blue/Cyan wash + Glowing border)
-            val pressedBg = GradientDrawable().apply {
+            val normalBg = LayerDrawable(arrayOf(normalOuterHalo, normalInnerCore)).apply {
+                setLayerInset(1, dpToPx(1), dpToPx(1), dpToPx(1), dpToPx(1))
+            }
+
+            // 2. Pressed Key Glow (Interior remains dark; cyan border & outer glow become intensely bright)
+            val pressedOuterHalo = GradientDrawable().apply {
+                cornerRadius = cornerRadiusPx + dpToPx(1)
+                setColor(Color.TRANSPARENT)
+                setStroke(dpToPx(3), Color.parseColor("#8000F0FF")) // Intense electric cyan outer glow
+            }
+
+            val pressedInnerCore = GradientDrawable().apply {
                 cornerRadius = cornerRadiusPx
-                when (key.type) {
-                    KeyType.ENTER -> {
-                        setColor(Color.parseColor("#00F0FF")) // High-voltage Cyan Glow
-                        setStroke(dpToPx(2), Color.parseColor("#E0F2FE"))
-                    }
-                    KeyType.SHIFT -> {
-                        if (isShifted) {
-                            setColor(Color.parseColor("#38BDF8"))
-                            setStroke(dpToPx(2), Color.parseColor("#FFFFFF"))
-                        } else {
-                            setColor(Color.parseColor("#0284C7"))
-                            setStroke(dpToPx(2), Color.parseColor("#00F0FF"))
-                        }
-                    }
-                    else -> {
-                        setColor(Color.parseColor("#0369A1")) // Neon Blue / Cyan Wash
-                        setStroke(dpToPx(2), Color.parseColor("#00F0FF")) // Brilliant Neon Cyan Glowing Border
-                    }
-                }
+                // Dark interior with faint electric shadow tint (NOT a solid blue button)
+                setColor(Color.parseColor("#071526"))
+                setStroke(dpToPx(2), Color.parseColor("#00F0FF")) // Intense bright electric cyan border
+            }
+
+            val pressedBg = LayerDrawable(arrayOf(pressedOuterHalo, pressedInnerCore)).apply {
+                setLayerInset(1, dpToPx(1), dpToPx(1), dpToPx(1), dpToPx(1))
             }
 
             // 3. Hardware-accelerated StateListDrawable with 120ms exit fade
@@ -215,7 +226,7 @@ class KeyboardView(
 
             background = keyBackground
 
-            // Primary Label
+            // Primary Label (Bright cyan / neon blue)
             val primaryText = TextView(context).apply {
                 val displayLabel = when {
                     key.type == KeyType.CHARACTER && isShifted -> key.shiftLabel
@@ -229,7 +240,7 @@ class KeyboardView(
                     else -> 19f
                 }
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#F0F9FF"))
+                setTextColor(Color.parseColor("#00F0FF")) // Bright electric cyan text
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
@@ -237,12 +248,12 @@ class KeyboardView(
             }
             addView(primaryText)
 
-            // Secondary label preview (hint in corner)
+            // Secondary label preview (Dimmer cyan hint in corner)
             if (key.secondaryLabel != null && currentLayer == KeyboardLayer.QWERTY && !isShifted) {
                 val secText = TextView(context).apply {
                     text = key.secondaryLabel
                     textSize = 10f
-                    setTextColor(Color.parseColor("#38BDF8"))
+                    setTextColor(Color.parseColor("#0891B2")) // Dimmer cyan hint
                     val secParams = FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.WRAP_CONTENT,
                         FrameLayout.LayoutParams.WRAP_CONTENT
